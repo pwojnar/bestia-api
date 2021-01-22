@@ -115,9 +115,9 @@ if __name__ == '__main__':
     queue = Queue(maxsize=0)
     num_threads = 10
     for year in range(2004, 2020):
-        # for index, unit in enumerate(units):
-        unit_year = {'unit_id': '825ae0a3-4688-4ff7-8b63-5aa76865231d', 'year': year}
-        queue.put(unit_year)
+        for index, unit in enumerate(units):
+            unit_year = {'unit_id': unit['const-id'], 'year': year}
+            queue.put(unit_year)
 
     for i in range(num_threads):
         logger.debug('Starting thread {}'.format(i))
