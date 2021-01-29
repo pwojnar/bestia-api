@@ -45,8 +45,9 @@ def fetch_all(url, params=None):
     while self_url != last_url:
         params['page'] = page
         r = requests.get(start_url, params)
-        logger.info(url + ': ' + str(r.status_code) + ' len: ' + str(len(r.content)))
-        if r.status_code != 200:
+        if r.status_code == 404 or r.status_code == 409:
+            raise Exception(str(r.status_code))
+        if r.status_code == 204:
             return []
         response = r.json()
         data = response['data']
@@ -69,19 +70,37 @@ def get_units():
     return selected_units
 
 
-def get_unit_data(unit_id, year):
+def try_get_unit_data(unit_id, year, version):
+    fetched = False
+    trials = 1
     url = '/pozycje-rb27s'
-    version = 10
     params = {
         'filter[jednostka-const-id]': unit_id,
         'filter[okres-okres]': '4',
-        'filter[okres-rok]': str(year)
+        'filter[okres-rok]': str(year),
+        'filter[sprawozdanie-wersja]': str(version)
     }
     data = []
+    while not fetched and trials <= 3:
+        try:
+            logger.info('Try: ' + unit_id + ", " + str(year) + ", " + str(version) + ", " + str(trials))
+            data = fetch_all(url, params)
+            logger.info('Done: ' + unit_id + ", " + str(year) + ", " + str(version))
+            fetched = True
+        except Exception as e:
+            logger.error('Error: ' + str(e))
+            trials = trials + 1
+    if not fetched:
+        logger.error('Couldn\'t get ' + unit_id + ", " + str(year))
+        raise Exception('Failed after 3 trials')
+    return data
+
+
+def get_unit_data(unit_id, year):
+    version = 10
+    data = []
     while len(data) == 0 and version >= 0:
-        params['filter[sprawozdanie-wersja]'] = version
-        logger.info('Get unit ' + unit_id + ' version ' + str(version) + ', year ' + str(year))
-        data = fetch_all(url, params)
+        data = try_get_unit_data(unit_id, year, version)
         version = version - 1
     if len(data) > 0:
         logger.info('Got data for ' + unit_id + '/' + str(version + 1) + '/' + str(year))
@@ -101,9 +120,10 @@ def get_queued_unit_data(queue):
         unit_year = queue.get()
         try:
             unit_id = unit_year['unit_id']
-            logger.info('Start: ' + unit_id)
-            save_unit_data(unit_id, unit_year['year'])
-            logger.info('Done: ' + unit_id)
+            year = unit_year['year']
+            logger.info('Start: ' + unit_id + ", " + str(year))
+            save_unit_data(unit_id, year)
+            logger.info('Done: ' + unit_id + ", " + str(year))
         except Exception as e:
             logger.error('Error: ' + str(e))
         queue.task_done()
@@ -114,7 +134,7 @@ if __name__ == '__main__':
     units = get_units()
     queue = Queue(maxsize=0)
     num_threads = 10
-    for year in range(2004, 2020):
+    for year in range(2001, 2020):
         for index, unit in enumerate(units):
             unit_year = {'unit_id': unit['const-id'], 'year': year}
             queue.put(unit_year)
