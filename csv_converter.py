@@ -12,16 +12,18 @@ logger.addHandler(logging.StreamHandler())
 def save_json_to_csv(src_filename, dest_file):
     with open(src_filename, 'r', encoding='utf-8') as f:
         data = json.load(f)['data']
-        for row in data:
+        for unit in data:
             writer = csv.writer(dest_file)
-            writer.writerow(row.values())
+            row = [unit["jednostka-const-id"] + "-" + unit["okres-rok"]]
+            row.extend(unit.values())
+            writer.writerow(row)
 
 
 def init_csv_file(filename):
     if not os.path.exists(filename):
         with open(filename, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(["jednostka-id", "jednostka-const-id", "jednostka-nazwa", "jednostka-wk", "jednostka-pk", "jednostka-gk", "jednostka-gt", "jednostka-pt", "jednostka-regon", "okres-rok", "okres-okres", "sprawozdanie-wersja", "sprawozdanie-data", "dzial", "rozdzial", "paragraf", "pl", "na", "po", "dw", "do", "no", "nz", "np", "so", "su", "sd", "uz", "ot"])
+            writer.writerow(["plik", "jednostka-id", "jednostka-const-id", "jednostka-nazwa", "jednostka-wk", "jednostka-pk", "jednostka-gk", "jednostka-gt", "jednostka-pt", "jednostka-regon", "okres-rok", "okres-okres", "sprawozdanie-wersja", "sprawozdanie-data", "dzial", "rozdzial", "paragraf", "pl", "na", "po", "dw", "do", "no", "nz", "np", "so", "su", "sd", "uz", "ot"])
 
 
 _, _, filenames = next(os.walk('.'))
